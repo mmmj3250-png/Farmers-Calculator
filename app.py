@@ -12,39 +12,46 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS - cleaner modern look
+# Custom CSS with your background image
 st.markdown("""
 <style>
-    /* Main background */
+    /* Background image */
     .stApp {
-        background-color: #f4f7f5;
+        background-image: url("https://i.postimg.cc/LXKLTyHb/0d6c7a347198fcd057634a3dba8a8526.jpg");
+        background-size: cover;
+        background-position: center;
+        background-attachment: fixed;
+        background-repeat: no-repeat;
     }
-    
-    /* Sidebar styling */
+
+    /* Make content readable */
+    .stApp > header {
+        background-color: transparent;
+    }
+
     section[data-testid="stSidebar"] {
-        background-color: #e8f5e9;
+        background-color: rgba(232, 245, 233, 0.93);
         border-right: 1px solid #c8e6c9;
     }
-    
-    /* Metric cards */
+
     div[data-testid="stMetric"] {
-        background-color: white;
+        background-color: rgba(255, 255, 255, 0.93);
         padding: 18px 15px;
         border-radius: 12px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.10);
         border: 1px solid #e0e0e0;
     }
-    
-    /* Headers */
+
     h1 {
         color: #1b5e20 !important;
         font-weight: 700 !important;
+        text-shadow: 0 1px 3px rgba(255,255,255,0.85);
     }
     h2, h3 {
         color: #2e7d32 !important;
+        text-shadow: 0 1px 2px rgba(255,255,255,0.7);
     }
-    
-    /* Buttons */
+
     .stButton > button {
         width: 100%;
         border-radius: 10px;
@@ -58,18 +65,15 @@ st.markdown("""
         background-color: #1b5e20;
         color: white;
     }
-    
-    /* Dataframes */
+
     .stDataFrame {
         border-radius: 10px;
         overflow: hidden;
+        background-color: rgba(255,255,255,0.95);
     }
-    
-    /* Expander */
-    .streamlit-expanderHeader {
-        font-weight: 600;
-        background-color: #f1f8e9;
-        border-radius: 8px;
+
+    .stAlert {
+        background-color: rgba(255,255,255,0.92);
     }
 </style>
 """, unsafe_allow_html=True)
@@ -192,7 +196,6 @@ m4.metric("Runtime", f"{total_runtime:.2f} hrs")
 
 st.markdown("")
 
-# Summary card
 st.markdown("### 🏡 Farm Summary")
 st.info(f"""
 **Farm:** {farm_name}  
@@ -201,7 +204,6 @@ st.info(f"""
 **Irrigation Status:** {status} ({ratio:.1f}% of target)
 """)
 
-# Temperature
 st.markdown("### 🌡️ Temperature Overview")
 t1, t2, t3 = st.columns(3)
 t1.metric("Average", f"{avg_temp:.1f} °C")
@@ -210,7 +212,6 @@ t3.metric("Lowest", f"{min_temp:.1f} °C")
 
 st.write(f"**Hottest:** {hottest['time']} ({hottest['temperature']:.1f}°C)  •  **Coolest:** {coolest['time']} ({coolest['temperature']:.1f}°C)")
 
-# Alerts
 HIGH, LOW = 32, 15
 alerts = []
 for r in temperature_records:
@@ -226,7 +227,6 @@ if alerts:
 else:
     st.success("✓ No temperature alerts — all readings normal")
 
-# Pump details
 st.markdown("### 🔧 Pump Run Details")
 if pump_records:
     table_data = []
@@ -243,7 +243,6 @@ if pump_records:
 else:
     st.info("No pump runs recorded yet.")
 
-# Temperature log
 st.markdown("### 📅 Temperature Log")
 temp_data = []
 for r in temperature_records:
@@ -255,10 +254,9 @@ for r in temperature_records:
     })
 st.dataframe(temp_data, use_container_width=True, hide_index=True)
 
-# What-if
 st.markdown("### 🔮 What-If Simulator")
 st.write("See potential savings if you reduce pump runtime:")
-reduction = st.slider("Reduce runtime by (%)", 0, 100, 20, help="Adjust to explore savings")
+reduction = st.slider("Reduce runtime by (%)", 0, 100, 20)
 
 factor = 1 - (reduction / 100)
 saved_water = total_water * (1 - factor)
@@ -270,7 +268,6 @@ s1.metric("Water Saved", f"{saved_water:,.0f} L")
 s2.metric("Energy Saved", f"{saved_energy:.2f} kWh")
 s3.metric("Money Saved", f"${saved_cost:.2f}")
 
-# Downloads
 st.markdown("### 📥 Download Reports")
 col_a, col_b = st.columns(2)
 
