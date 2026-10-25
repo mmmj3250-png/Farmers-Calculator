@@ -12,7 +12,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS with your background image
+# Custom CSS with your background + improved readability
 st.markdown("""
 <style>
     /* Background image */
@@ -24,56 +24,78 @@ st.markdown("""
         background-repeat: no-repeat;
     }
 
-    /* Make content readable */
+    /* Header transparent */
     .stApp > header {
         background-color: transparent;
     }
 
+    /* Sidebar - solid and readable */
     section[data-testid="stSidebar"] {
-        background-color: rgba(232, 245, 233, 0.93);
-        border-right: 1px solid #c8e6c9;
+        background-color: rgba(232, 245, 233, 0.97) !important;
+        border-right: 2px solid #a5d6a7;
     }
 
+    /* Metric cards - solid white for clarity */
     div[data-testid="stMetric"] {
-        background-color: rgba(255, 255, 255, 0.93);
+        background-color: rgba(255, 255, 255, 0.96) !important;
         padding: 18px 15px;
         border-radius: 12px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.10);
-        border: 1px solid #e0e0e0;
+        box-shadow: 0 3px 10px rgba(0,0,0,0.12);
+        border: 1px solid #c8e6c9;
     }
 
+    /* Main titles */
     h1 {
         color: #1b5e20 !important;
-        font-weight: 700 !important;
-        text-shadow: 0 1px 3px rgba(255,255,255,0.85);
-    }
-    h2, h3 {
-        color: #2e7d32 !important;
-        text-shadow: 0 1px 2px rgba(255,255,255,0.7);
+        font-weight: 800 !important;
+        text-shadow: 0 2px 4px rgba(255,255,255,0.95), 0 0 8px rgba(255,255,255,0.7) !important;
     }
 
+    h2, h3 {
+        color: #1b5e20 !important;
+        font-weight: 700 !important;
+        text-shadow: 0 1px 3px rgba(255,255,255,0.9) !important;
+    }
+
+    /* Normal text */
+    p, .stMarkdown, .stCaption {
+        color: #1a1a1a !important;
+        text-shadow: 0 1px 2px rgba(255,255,255,0.8);
+    }
+
+    /* Buttons */
     .stButton > button {
         width: 100%;
         border-radius: 10px;
         height: 2.8em;
         font-weight: 600;
-        background-color: #2e7d32;
-        color: white;
+        background-color: #2e7d32 !important;
+        color: white !important;
         border: none;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.15);
     }
     .stButton > button:hover {
-        background-color: #1b5e20;
-        color: white;
+        background-color: #1b5e20 !important;
+        color: white !important;
     }
 
+    /* Tables */
     .stDataFrame {
         border-radius: 10px;
         overflow: hidden;
-        background-color: rgba(255,255,255,0.95);
+        background-color: rgba(255,255,255,0.97) !important;
     }
 
-    .stAlert {
-        background-color: rgba(255,255,255,0.92);
+    /* Alerts and info boxes */
+    .stAlert, div[data-testid="stAlert"] {
+        background-color: rgba(255,255,255,0.95) !important;
+        border-radius: 10px;
+    }
+
+    /* Input fields */
+    .stTextInput > div > div > input,
+    .stNumberInput > div > div > input {
+        background-color: rgba(255,255,255,0.95) !important;
     }
 </style>
 """, unsafe_allow_html=True)
