@@ -1,37 +1,35 @@
-# Farmers-Calculator
-Smart Farmers calculator by Max
 # 🌾 Smart Farm Water, Energy & Temperature Calculator
 
-A practical web tool for farmers and farm managers to calculate:
+A practical web application that helps farmers and farm managers calculate daily water use, energy consumption, electricity costs, and temperature conditions.
 
-- Water used by irrigation pumps
-- Electrical and solar energy consumption
-- Daily electricity costs
-- Temperature monitoring and alerts
-- Irrigation efficiency
-- What-if savings scenarios
+**Live App:** [Open the Calculator](PASTE_YOUR_STREAMLIT_LINK_HERE)
 
-## How to use
-
-1. Open the live app
-2. Fill in your farm details on the left sidebar
-3. Enter pump running times (or use automatic mode)
-4. Enter temperature readings
-5. View results, alerts and download reports
+---
 
 ## Features
 
-- Manual or automatic pump data entry
-- Electrical / Solar / Hybrid pump support
-- Temperature alerts (high and low)
-- What-if irrigation simulator
-- Downloadable CSV reports
-- Mobile-friendly design
+- Calculate total water used by irrigation pumps
+- Track electrical and solar energy consumption
+- Estimate daily electricity costs
+- Monitor temperature with high/low alerts
+- View irrigation efficiency status
+- Run "What-If" scenarios to see potential savings
+- Download full CSV reports
+- Fully usable on mobile phones
 
-## Future plans
+## How to Use
 
-This calculator will later connect to real farm hardware (sensors and controllers) for automatic data collection.
+1. Open the live app using the link above
+2. Enter your farm details in the sidebar
+3. Add pump running times (manual or automatic)
+4. Enter temperature readings
+5. View results and download reports
 
-## Live App
+## Future Development
 
-[Open the live calculator here](PASTE_YOUR_STREAMLIT_LINK_HERE)
+This tool is designed to later connect with real farm hardware (sensors and controllers) for automatic data collection.
+
+## Built With
+
+- Python
+- Streamlit
