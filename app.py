@@ -12,7 +12,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS with your background + improved readability
+# Custom CSS with your background + white text outside boxes
 st.markdown("""
 <style>
     /* Background image */
@@ -24,18 +24,17 @@ st.markdown("""
         background-repeat: no-repeat;
     }
 
-    /* Header transparent */
     .stApp > header {
         background-color: transparent;
     }
 
-    /* Sidebar - solid and readable */
+    /* Sidebar */
     section[data-testid="stSidebar"] {
         background-color: rgba(232, 245, 233, 0.97) !important;
         border-right: 2px solid #a5d6a7;
     }
 
-    /* Metric cards - solid white for clarity */
+    /* Metric cards - solid white */
     div[data-testid="stMetric"] {
         background-color: rgba(255, 255, 255, 0.96) !important;
         padding: 18px 15px;
@@ -44,7 +43,7 @@ st.markdown("""
         border: 1px solid #c8e6c9;
     }
 
-    /* Main titles */
+    /* Titles - strong green with white glow */
     h1 {
         color: #1b5e20 !important;
         font-weight: 800 !important;
@@ -52,15 +51,15 @@ st.markdown("""
     }
 
     h2, h3 {
-        color: #1b5e20 !important;
+        color: #ffffff !important;
         font-weight: 700 !important;
-        text-shadow: 0 1px 3px rgba(255,255,255,0.9) !important;
+        text-shadow: 0 2px 4px rgba(0,0,0,0.7) !important;
     }
 
-    /* Normal text */
-    p, .stMarkdown, .stCaption {
-        color: #1a1a1a !important;
-        text-shadow: 0 1px 2px rgba(255,255,255,0.8);
+    /* Plain text outside boxes → WHITE */
+    p, .stMarkdown, .stCaption, .stWrite {
+        color: #ffffff !important;
+        text-shadow: 0 1px 3px rgba(0,0,0,0.8) !important;
     }
 
     /* Buttons */
