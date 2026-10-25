@@ -4,7 +4,6 @@ from datetime import datetime, timedelta
 import csv
 import io
 
-# Page config
 st.set_page_config(
     page_title="Smart Farm Calculator",
     page_icon="🌾",
@@ -12,10 +11,10 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS with your background + white text outside boxes
+# Improved CSS
 st.markdown("""
 <style>
-    /* Background image */
+    /* Background */
     .stApp {
         background-image: url("https://i.postimg.cc/LXKLTyHb/0d6c7a347198fcd057634a3dba8a8526.jpg");
         background-size: cover;
@@ -31,47 +30,52 @@ st.markdown("""
     /* Sidebar */
     section[data-testid="stSidebar"] {
         background-color: rgba(232, 245, 233, 0.97) !important;
-        border-right: 2px solid #a5d6a7;
+        border-right: 2px solid #81c784;
     }
 
-    /* Metric cards - solid white */
+    /* Metric cards - keep dark text inside */
     div[data-testid="stMetric"] {
-        background-color: rgba(255, 255, 255, 0.96) !important;
+        background-color: rgba(255, 255, 255, 0.97) !important;
         padding: 18px 15px;
         border-radius: 12px;
-        box-shadow: 0 3px 10px rgba(0,0,0,0.12);
-        border: 1px solid #c8e6c9;
+        box-shadow: 0 3px 10px rgba(0,0,0,0.15);
+        border: 1px solid #a5d6a7;
     }
 
-    /* Titles - strong green with white glow */
+    /* Main Title */
     h1 {
         color: #1b5e20 !important;
         font-weight: 800 !important;
-        text-shadow: 0 2px 4px rgba(255,255,255,0.95), 0 0 8px rgba(255,255,255,0.7) !important;
+        -webkit-text-stroke: 0.6px #ffffff;
+        text-shadow: none !important;
     }
 
+    /* Section headings */
     h2, h3 {
         color: #ffffff !important;
         font-weight: 700 !important;
-        text-shadow: 0 2px 4px rgba(0,0,0,0.7) !important;
+        -webkit-text-stroke: 0.5px #1b5e20;
+        text-shadow: none !important;
+        letter-spacing: 0.3px;
     }
 
-    /* Plain text outside boxes → WHITE */
-    p, .stMarkdown, .stCaption, .stWrite {
+    /* Plain text outside boxes */
+    .stMarkdown p, .stCaption {
         color: #ffffff !important;
-        text-shadow: 0 1px 3px rgba(0,0,0,0.8) !important;
+        -webkit-text-stroke: 0.3px #1b5e20;
+        text-shadow: none !important;
     }
 
     /* Buttons */
     .stButton > button {
         width: 100%;
         border-radius: 10px;
-        height: 2.8em;
+        height: 2.9em;
         font-weight: 600;
         background-color: #2e7d32 !important;
         color: white !important;
         border: none;
-        box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+        box-shadow: 0 3px 8px rgba(0,0,0,0.2);
     }
     .stButton > button:hover {
         background-color: #1b5e20 !important;
@@ -85,16 +89,17 @@ st.markdown("""
         background-color: rgba(255,255,255,0.97) !important;
     }
 
-    /* Alerts and info boxes */
+    /* Info / Success / Warning boxes - keep dark text */
     .stAlert, div[data-testid="stAlert"] {
-        background-color: rgba(255,255,255,0.95) !important;
+        background-color: rgba(255,255,255,0.96) !important;
         border-radius: 10px;
+        border: 1px solid #a5d6a7;
     }
 
     /* Input fields */
     .stTextInput > div > div > input,
     .stNumberInput > div > div > input {
-        background-color: rgba(255,255,255,0.95) !important;
+        background-color: rgba(255,255,255,0.97) !important;
     }
 </style>
 """, unsafe_allow_html=True)
