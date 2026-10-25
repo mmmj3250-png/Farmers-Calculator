@@ -11,12 +11,12 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Improved CSS
+# CSS with new background + improved text visibility
 st.markdown("""
 <style>
-    /* Background */
+    /* New Background */
     .stApp {
-        background-image: url("https://i.postimg.cc/LXKLTyHb/0d6c7a347198fcd057634a3dba8a8526.jpg");
+        background-image: url("https://i.postimg.cc/ZqdBQrn9/Farmers.jpg");
         background-size: cover;
         background-position: center;
         background-attachment: fixed;
