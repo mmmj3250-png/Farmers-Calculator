@@ -1,11 +1,9 @@
-
 import streamlit as st
 import random
 from datetime import datetime, timedelta
+import csv
+import io
 import pandas as pd
-import plotly.express as px
-from fpdf import FPDF
-import re
 
 st.set_page_config(
     page_title="Smart Farm Calculator",
@@ -14,851 +12,331 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# ====================== CROP RECOMMENDATIONS ======================
-CROP_RECOMMENDATIONS = {
-    "Maize": {
-        "ideal_temp": "18–32°C",
-        "water_need": "High during flowering",
-        "tip": "Avoid water stress during tasseling stage."
-    },
-    "Beans": {
-        "ideal_temp": "15–25°C",
-        "water_need": "Moderate",
-        "tip": "Sensitive to waterlogging. Ensure good drainage."
-    },
-    "Tomatoes": {
-        "ideal_temp": "20–30°C",
-        "water_need": "Consistent moisture",
-        "tip": "Irregular watering causes fruit cracking."
-    },
-    "Wheat": {
-        "ideal_temp": "15–25°C",
-        "water_need": "Moderate",
-        "tip": "Critical water need during flowering and grain filling."
-    },
-    "Cabbage": {
-        "ideal_temp": "15–20°C",
-        "water_need": "High and regular",
-        "tip": "Keep soil consistently moist."
-    },
-    "Other": {
-        "ideal_temp": "Varies",
-        "water_need": "Check crop guide",
-        "tip": "Monitor soil moisture regularly."
-    }
-}
-
-# ====================== FARM DATA ======================
-def new_farm():
-    return {
-        "crop": "Maize",
-        "field_size": 5.0,
-        "pump_type": "Electrical",
-        "pump_power_kw": 2.2,
-        "flow_rate": 50.0,
-        "electricity_price": 0.15,
-        "fertilizer_cost": 0.0,
-        "solar_percentage": 70,
-        "entry_mode": "Manual",
-        "n_runs": 1,
-        "runs": [{"start": "06:00", "end": "08:00"}],
-        "temp_mode": "Manual",
-        "temperatures": [25.0] * 5,
-        "min_t": 18.0,
-        "max_t": 35.0,
-        "required_water": 5000.0,
-        "rainfall": 0.0,
-        "notes": "",
-        "history": [],
-        "auto_runs": [],
-        "auto_runs_key": None,
-        "auto_temps": [],
-        "auto_temps_key": None
-    }
-
-if "logged_in" not in st.session_state:
-    st.session_state.logged_in = False
-
-if "username" not in st.session_state:
-    st.session_state.username = ""
-
-if "farms" not in st.session_state:
-    st.session_state.farms = {"My Farm": new_farm()}
-
-if "current_farm" not in st.session_state:
-    st.session_state.current_farm = "My Farm"
-
-if "theme" not in st.session_state:
-    st.session_state.theme = "Light"
-
-if "farm_picker_revision" not in st.session_state:
-    st.session_state.farm_picker_revision = 0
-
-# ====================== LOGIN ======================
-if not st.session_state.logged_in:
-    st.title("🌾 Smart Farm Calculator")
-    st.subheader("Login")
-
-    username = st.text_input("Enter your name / farm username")
-
-    if st.button("Login", type="primary") and username.strip():
-        st.session_state.username = username.strip()
-        st.session_state.logged_in = True
-        st.rerun()
-
-    st.stop()
-
-# ====================== THEME ======================
-theme = st.sidebar.radio(
-    "Theme",
-    ["Light", "Dark"],
-    index=0 if st.session_state.theme == "Light" else 1
-)
-
-st.session_state.theme = theme
-dark = theme == "Dark"
-
-page_bg = "#101820" if dark else "#f3f7f2"
-panel_bg = "#1d2935" if dark else "#ffffff"
-text_color = "#f5f7fa" if dark else "#17231b"
-accent = "#7bc67e" if dark else "#236b35"
-plot_template = "plotly_dark" if dark else "plotly_white"
-
-# ====================== CUSTOM DESIGN ======================
-# Original hosted background image restored.
-st.markdown(f"""
+# ====================== CSS ======================
+st.markdown("""
 <style>
-.stApp {{
-    background-image:
-        linear-gradient(
-            rgba(10,18,12,0.45),
-            rgba(10,18,12,0.45)
-        ),
-        url("https://i.postimg.cc/ZqdBQrn9/Farmers.jpg");
-    background-size: cover;
-    background-position: center;
-    background-attachment: fixed;
-    color: {text_color};
-}}
+    .stApp {
+        background-image: url("https://i.postimg.cc/ZqdBQrn9/Farmers.jpg");
+        background-size: cover;
+        background-position: center;
+        background-attachment: fixed;
+        background-repeat: no-repeat;
+    }
+    .stApp > header { background-color: transparent; }
 
-[data-testid="stHeader"] {{
-    background: transparent;
-}}
+    section[data-testid="stSidebar"] {
+        background-color: rgba(232, 245, 233, 0.97) !important;
+        border-right: 2px solid #81c784;
+    }
 
-[data-testid="stSidebar"] {{
-    background-color: {panel_bg} !important;
-}}
+    div[data-testid="stMetric"] {
+        background-color: rgba(255, 255, 255, 0.97) !important;
+        padding: 16px 12px;
+        border-radius: 12px;
+        box-shadow: 0 3px 10px rgba(0,0,0,0.15);
+        border: 1px solid #a5d6a7;
+    }
 
-[data-testid="stMainBlockContainer"] {{
-    background: {"rgba(20,29,38,0.94)" if dark else "rgba(255,255,255,0.94)"};
-    border-radius: 16px;
-    padding: 1.25rem;
-}}
+    h1 {
+        color: #1b5e20 !important;
+        font-weight: 800 !important;
+        -webkit-text-stroke: 0.6px #ffffff;
+    }
+    h2, h3 {
+        color: #ffffff !important;
+        font-weight: 700 !important;
+        -webkit-text-stroke: 0.5px #1b5e20;
+    }
+    .stMarkdown p, .stCaption {
+        color: #ffffff !important;
+        -webkit-text-stroke: 0.3px #1b5e20;
+    }
 
-.stApp p,
-.stApp label,
-.stApp span,
-.stApp li,
-.stApp [data-testid="stMarkdownContainer"] {{
-    color: {text_color};
-}}
-
-h1, h2, h3 {{
-    color: {accent} !important;
-}}
-
-[data-testid="stMetric"] {{
-    background: {panel_bg};
-    border: 1px solid {accent};
-    border-radius: 12px;
-    padding: 14px;
-}}
-
-[data-testid="stMetricLabel"],
-[data-testid="stMetricValue"] {{
-    color: {text_color} !important;
-}}
-
-div[data-baseweb="input"] input,
-div[data-baseweb="textarea"] textarea {{
-    color: {text_color} !important;
-}}
-
-[data-testid="stDataFrame"] {{
-    border: 1px solid {accent};
-    border-radius: 10px;
-}}
-
-.stCaption {{
-    color: {text_color} !important;
-}}
+    .stButton > button {
+        width: 100%;
+        border-radius: 10px;
+        height: 2.8em;
+        font-weight: 600;
+        background-color: #2e7d32 !important;
+        color: white !important;
+        border: none;
+    }
+    .stDataFrame {
+        background-color: rgba(255,255,255,0.97) !important;
+        border-radius: 10px;
+    }
+    .stAlert {
+        background-color: rgba(255,255,255,0.96) !important;
+        border-radius: 10px;
+    }
 </style>
 """, unsafe_allow_html=True)
 
-# ====================== FARM MANAGEMENT ======================
+# ====================== TITLE ======================
+st.title("🌾 Smart Farm Calculator")
+st.caption("Water • Energy • Temperature • Cost Analysis • Efficiency")
+st.markdown("---")
+
+# ====================== SIDEBAR ======================
 with st.sidebar:
-    st.markdown(f"### 👤 {st.session_state.username}")
-    st.markdown("### 🚜 Farm Management")
-
-    # Create farm before drawing the farm selector.
-    with st.form("add_farm_form", clear_on_submit=True):
-        requested_name = st.text_input("New farm name")
-        add_clicked = st.form_submit_button("➕ Add New Farm")
-
-    if add_clicked:
-        clean_name = requested_name.strip()
-
-        existing_names = {
-            name.casefold()
-            for name in st.session_state.farms
-        }
-
-        if not clean_name:
-            st.warning("Please enter a farm name.")
-
-        elif clean_name.casefold() in existing_names:
-            st.warning("This farm name already exists.")
-
-        else:
-            st.session_state.farms[clean_name] = new_farm()
-            st.session_state.current_farm = clean_name
-
-            # Give the selector a new identity after farm creation.
-            st.session_state.farm_picker_revision += 1
-            st.rerun()
-
-    farm_names = list(st.session_state.farms.keys())
-
-    if st.session_state.current_farm not in farm_names:
-        st.session_state.current_farm = farm_names[0]
-
-    selected_farm = st.selectbox(
-        "Select Farm",
-        farm_names,
-        index=farm_names.index(st.session_state.current_farm),
-        key=f"farm_picker_{st.session_state.farm_picker_revision}"
-    )
-
-    st.session_state.current_farm = selected_farm
-
-farm_name = st.session_state.current_farm
-farm = st.session_state.farms[farm_name]
-
-# Unique widget namespace per farm.
-# This keeps different farms' input values separate.
-prefix = "farm_" + str(abs(hash(farm_name)))
-
-# ====================== FARM SETTINGS ======================
-with st.sidebar:
-    st.markdown("---")
     st.markdown("### 📋 Farm Details")
-
-    crop_options = list(CROP_RECOMMENDATIONS.keys())
-
-    crop_name = st.selectbox(
-        "Crop",
-        crop_options,
-        index=crop_options.index(farm["crop"]),
-        key=f"{prefix}_crop"
-    )
-
-    field_size = st.number_input(
-        "Field size (acres)",
-        min_value=0.1,
-        value=float(farm["field_size"]),
-        step=0.1,
-        key=f"{prefix}_area"
-    )
+    farm_name = st.text_input("Farm name", value="My Farm")
+    crop_name = st.text_input("Crop", value="Maize")
+    field_size = st.number_input("Field size (acres)", min_value=0.1, value=5.0, step=0.1)
 
     st.markdown("### ⚙️ Pump Settings")
-
-    pump_options = ["Electrical", "Solar", "Hybrid"]
-
-    pump_type = st.selectbox(
-        "Energy source",
-        pump_options,
-        index=pump_options.index(farm["pump_type"]),
-        key=f"{prefix}_pump"
-    )
-
-    pump_power_kw = st.number_input(
-        "Power (kW)",
-        min_value=0.1,
-        value=float(farm["pump_power_kw"]),
-        step=0.1,
-        key=f"{prefix}_power"
-    )
-
-    flow_rate = st.number_input(
-        "Flow rate (L/min)",
-        min_value=1.0,
-        value=float(farm["flow_rate"]),
-        step=1.0,
-        key=f"{prefix}_flow"
-    )
+    pump_type = st.selectbox("Energy source", ["Electrical", "Solar", "Hybrid"])
+    pump_power_kw = st.number_input("Power rating (kW)", min_value=0.1, value=2.2, step=0.1)
+    flow_rate = st.number_input("Flow rate (L/min)", min_value=1.0, value=50.0, step=1.0)
 
     st.markdown("### 💰 Costs")
+    electricity_price = st.number_input("Electricity price ($/kWh)", min_value=0.0, value=0.15, step=0.01)
+    fertilizer_cost = st.number_input("Fertilizer / Chemical cost today ($)", min_value=0.0, value=0.0, step=1.0)
 
-    electricity_price = st.number_input(
-        "Electricity ($/kWh)",
-        min_value=0.0,
-        value=float(farm["electricity_price"]),
-        step=0.01,
-        key=f"{prefix}_electricity"
-    )
-
-    fertilizer_cost = st.number_input(
-        "Fertilizer cost ($)",
-        min_value=0.0,
-        value=float(farm["fertilizer_cost"]),
-        step=1.0,
-        key=f"{prefix}_fertilizer"
-    )
-
-    if pump_type == "Solar":
-        solar_percentage = 100
-        st.caption("Solar contribution: 100%")
-
-    elif pump_type == "Electrical":
-        solar_percentage = 0
-        st.caption("Solar contribution: 0%")
-
+    if pump_type == "Hybrid":
+        solar_percentage = st.slider("Solar contribution (%)", 0, 100, 70)
     else:
-        solar_percentage = st.slider(
-            "Solar %",
-            0, 100,
-            int(farm["solar_percentage"]),
-            key=f"{prefix}_solar"
-        )
+        solar_percentage = 100 if pump_type == "Solar" else 0
 
     st.markdown("### ⏱️ Pump Runs")
-
-    entry_mode = st.radio(
-        "Mode",
-        ["Manual", "Automatic"],
-        index=["Manual", "Automatic"].index(farm["entry_mode"]),
-        horizontal=True,
-        key=f"{prefix}_mode"
-    )
-
-    n_runs = int(st.number_input(
-        "Number of runs",
-        min_value=1,
-        max_value=8,
-        value=int(farm["n_runs"]),
-        key=f"{prefix}_n_runs"
-    ))
+    entry_mode = st.radio("Entry mode", ["Manual", "Automatic"], horizontal=True)
 
     pump_records = []
-    runs_valid = True
-
     if entry_mode == "Manual":
-        old_runs = farm["runs"]
-
-        for i in range(n_runs):
-            previous = (
-                old_runs[i]
-                if i < len(old_runs)
-                else {"start": "06:00", "end": "08:00"}
-            )
-
-            with st.expander(f"Run {i+1}", expanded=(i == 0)):
+        number_of_runs = st.number_input("Number of runs", min_value=1, max_value=8, value=1)
+        for i in range(int(number_of_runs)):
+            with st.expander(f"Run #{i+1}", expanded=(i==0)):
                 c1, c2 = st.columns(2)
-
-                start = c1.text_input(
-                    "Start (HH:MM)",
-                    previous["start"],
-                    key=f"{prefix}_start_{i}"
-                )
-
-                end = c2.text_input(
-                    "End (HH:MM)",
-                    previous["end"],
-                    key=f"{prefix}_end_{i}"
-                )
-
+                start = c1.text_input("Start (HH:MM)", value="06:00", key=f"s_{i}")
+                end = c2.text_input("End (HH:MM)", value="08:00", key=f"e_{i}")
                 try:
-                    s = datetime.strptime(start, "%H:%M")
-                    e = datetime.strptime(end, "%H:%M")
-
-                    if e < s:
-                        e += timedelta(days=1)
-
-                    runtime = (e - s).total_seconds() / 3600
-
-                    pump_records.append({
-                        "run": i+1,
-                        "start": start,
-                        "end": end,
-                        "runtime": runtime
-                    })
-
-                except ValueError:
-                    runs_valid = False
-                    st.error("Enter time using HH:MM.")
-
+                    start_dt = datetime.strptime(start, "%H:%M")
+                    end_dt = datetime.strptime(end, "%H:%M")
+                    if end_dt < start_dt:
+                        end_dt += timedelta(days=1)
+                    runtime = (end_dt - start_dt).total_seconds() / 3600
+                    pump_records.append({"run": i+1, "start": start, "end": end, "runtime": runtime})
+                except:
+                    st.error("Use HH:MM format")
     else:
-        min_rt = st.number_input(
-            "Min hours/run",
-            min_value=0.0,
-            value=1.0,
-            step=0.5,
-            key=f"{prefix}_min_runtime"
-        )
-
-        max_rt = st.number_input(
-            "Max hours/run",
-            min_value=0.0,
-            value=3.0,
-            step=0.5,
-            key=f"{prefix}_max_runtime"
-        )
-
-        if max_rt < min_rt:
-            runs_valid = False
-            st.warning("Maximum runtime must be >= minimum runtime.")
-
-        else:
-            auto_key = (n_runs, min_rt, max_rt)
-
-            if farm["auto_runs_key"] != auto_key:
-                farm["auto_runs"] = [
-                    round(random.uniform(min_rt, max_rt), 2)
-                    for _ in range(n_runs)
-                ]
-                farm["auto_runs_key"] = auto_key
-
-            for i, runtime in enumerate(farm["auto_runs"]):
-                pump_records.append({
-                    "run": i+1,
-                    "start": "Auto",
-                    "end": "Auto",
-                    "runtime": runtime
-                })
+        number_of_runs = st.number_input("Number of runs", min_value=1, max_value=8, value=2)
+        min_rt = st.number_input("Min hours", value=1.0, step=0.5)
+        max_rt = st.number_input("Max hours", value=3.0, step=0.5)
+        for i in range(int(number_of_runs)):
+            runtime = round(random.uniform(min_rt, max_rt), 2)
+            pump_records.append({"run": i+1, "start": "Auto", "end": "Auto", "runtime": runtime})
 
     st.markdown("### 🌡️ Temperature")
-
-    temp_mode = st.radio(
-        "Temperature mode",
-        ["Manual", "Automatic"],
-        index=["Manual", "Automatic"].index(farm["temp_mode"]),
-        horizontal=True,
-        key=f"{prefix}_temp_mode"
-    )
-
-    hours = ["06:00", "09:00", "12:00", "15:00", "18:00"]
+    temp_mode = st.radio("Mode", ["Manual", "Automatic"], horizontal=True, key="temp_mode")
+    temperature_hours = ["06:00", "09:00", "12:00", "15:00", "18:00"]
     temperature_records = []
-
+    
     if temp_mode == "Manual":
-        for i, hour in enumerate(hours):
-            temperature = st.number_input(
-                hour,
-                value=float(farm["temperatures"][i]),
-                key=f"{prefix}_temp_{i}"
-            )
-
-            temperature_records.append({
-                "time": hour,
-                "temperature": temperature
-            })
-
+        for hour in temperature_hours:
+            temp = st.number_input(f"{hour}", value=25.0, key=f"t_{hour}")
+            temperature_records.append({"time": hour, "temperature": temp})
     else:
-        min_t = st.number_input(
-            "Minimum °C",
-            value=float(farm["min_t"]),
-            key=f"{prefix}_min_temp"
-        )
-
-        max_t = st.number_input(
-            "Maximum °C",
-            value=float(farm["max_t"]),
-            key=f"{prefix}_max_temp"
-        )
-
-        if max_t < min_t:
-            st.warning("Maximum temperature must be >= minimum.")
-
-        else:
-            auto_temp_key = (min_t, max_t)
-
-            if farm["auto_temps_key"] != auto_temp_key:
-                farm["auto_temps"] = [
-                    round(random.uniform(min_t, max_t), 1)
-                    for _ in hours
-                ]
-                farm["auto_temps_key"] = auto_temp_key
-
-            temperature_records = [
-                {"time": h, "temperature": t}
-                for h, t in zip(hours, farm["auto_temps"])
-            ]
+        min_t = st.number_input("Min °C", value=18.0)
+        max_t = st.number_input("Max °C", value=35.0)
+        for hour in temperature_hours:
+            temp = round(random.uniform(min_t, max_t), 1)
+            temperature_records.append({"time": hour, "temperature": temp})
 
     st.markdown("### 💧 Water & Rain")
+    required_water = st.number_input("Required water today (L)", min_value=0.0, value=5000.0, step=100.0)
+    rainfall = st.number_input("Rainfall today (mm)", min_value=0.0, value=0.0, step=0.5,
+                              help="Rain reduces the need for irrigation")
 
-    required_water = st.number_input(
-        "Required water (L)",
-        min_value=0.0,
-        value=float(farm["required_water"]),
-        step=100.0,
-        key=f"{prefix}_required_water"
-    )
+    st.markdown("### 📝 Notes")
+    notes = st.text_area("Additional notes (appears in report)", height=80)
 
-    rainfall = st.number_input(
-        "Rainfall (mm)",
-        min_value=0.0,
-        value=float(farm["rainfall"]),
-        step=0.5,
-        key=f"{prefix}_rainfall"
-    )
-
-    notes = st.text_area(
-        "Notes",
-        value=farm["notes"],
-        key=f"{prefix}_notes"
-    )
-
-# ====================== SAVE FARM SETTINGS ======================
-farm.update({
-    "crop": crop_name,
-    "field_size": field_size,
-    "pump_type": pump_type,
-    "pump_power_kw": pump_power_kw,
-    "flow_rate": flow_rate,
-    "electricity_price": electricity_price,
-    "fertilizer_cost": fertilizer_cost,
-    "solar_percentage": solar_percentage,
-    "entry_mode": entry_mode,
-    "n_runs": n_runs,
-    "temp_mode": temp_mode,
-    "temperatures": [
-        r["temperature"] for r in temperature_records
-    ],
-    "required_water": required_water,
-    "rainfall": rainfall,
-    "notes": notes
-})
-
-if entry_mode == "Manual":
-    farm["runs"] = [
-        {"start": r["start"], "end": r["end"]}
-        for r in pump_records
-    ]
+    if st.button("🔄 Reset All Inputs"):
+        st.rerun()
 
 # ====================== CALCULATIONS ======================
-total_runtime = sum(
-    r["runtime"] for r in pump_records
-) if runs_valid else 0
-
-total_water = total_runtime * flow_rate * 60
+total_runtime = sum(r["runtime"] for r in pump_records) if pump_records else 0
+water_per_hour = flow_rate * 60
+total_water = total_runtime * water_per_hour
 total_energy = total_runtime * pump_power_kw
 
-electrical_energy = total_energy * (
-    100 - solar_percentage
-) / 100
-
+electrical_energy = total_energy * (100 - solar_percentage) / 100
 solar_energy = total_energy * solar_percentage / 100
-
 electricity_cost = electrical_energy * electricity_price
 total_cost = electricity_cost + fertilizer_cost
 
-temps = [
-    r["temperature"] for r in temperature_records
-] or [0]
+# Adjusted water need after rainfall (simple estimation)
+effective_required = max(0, required_water - (rainfall * field_size * 1000 * 0.7))  # rough conversion
 
-avg_temp = sum(temps) / len(temps)
-max_temp = max(temps)
-min_temp = min(temps)
+temps = [r["temperature"] for r in temperature_records] if temperature_records else [0]
+avg_temp = sum(temps) / len(temps) if temps else 0
+max_temp = max(temps) if temps else 0
+min_temp = min(temps) if temps else 0
 
-ratio = (
-    total_water / required_water * 100
-    if required_water > 0 else 0
-)
+hottest = max(temperature_records, key=lambda x: x["temperature"]) if temperature_records else {"time": "-", "temperature": 0}
+coolest = min(temperature_records, key=lambda x: x["temperature"]) if temperature_records else {"time": "-", "temperature": 0}
 
+ratio = (total_water / effective_required * 100) if effective_required > 0 else 0
 if ratio > 120:
-    status, efficiency = "Over-irrigation", "Poor"
+    status = "Possible over-irrigation"
+    efficiency = "Poor"
 elif ratio >= 90:
-    status, efficiency = "On target", "Good"
+    status = "Within target range"
+    efficiency = "Good"
 else:
-    status, efficiency = "Under-irrigation", "Average"
+    status = "Possible under-irrigation"
+    efficiency = "Average"
 
-water_per_acre = total_water / field_size
-cost_per_litre = total_cost / total_water if total_water else 0
+water_per_acre = total_water / field_size if field_size > 0 else 0
+cost_per_litre = total_cost / total_water if total_water > 0 else 0
 
-# ====================== MAIN DASHBOARD ======================
-st.title(f"🌾 {farm_name}")
-st.caption(
-    f"Logged in as {st.session_state.username} "
-    "· Independent farm workspace"
-)
+# Projections
+daily_cost = total_cost
+weekly_cost = total_cost * 7
+monthly_cost = total_cost * 30
 
-# Metrics
-m1, m2, m3, m4 = st.columns(4)
+# ====================== MAIN DISPLAY ======================
+st.subheader("📊 Today's Key Results")
 
-m1.metric("Water Used", f"{total_water:,.0f} L")
-m2.metric("Energy", f"{total_energy:.2f} kWh")
-m3.metric("Total Cost", f"${total_cost:,.2f}")
-m4.metric("Efficiency", efficiency)
+c1, c2, c3, c4 = st.columns(4)
+c1.metric("Water Used", f"{total_water:,.0f} L")
+c2.metric("Energy Used", f"{total_energy:.2f} kWh")
+c3.metric("Total Cost", f"${total_cost:.2f}")
+c4.metric("Runtime", f"{total_runtime:.2f} hrs")
 
-m5, m6, m7, m8 = st.columns(4)
+c5, c6, c7, c8 = st.columns(4)
+c5.metric("Water per Acre", f"{water_per_acre:,.0f} L")
+c6.metric("Cost per Litre", f"${cost_per_litre:.4f}")
+c7.metric("Efficiency", efficiency)
+c8.metric("Rainfall", f"{rainfall} mm")
 
-m5.metric("Water / Acre", f"{water_per_acre:,.0f} L")
-m6.metric("Cost / Litre", f"${cost_per_litre:.4f}")
-m7.metric("Runtime", f"{total_runtime:.2f} h")
-m8.metric("Rainfall", f"{rainfall:g} mm")
+st.markdown("")
 
-# Crop tips
-rec = CROP_RECOMMENDATIONS[crop_name]
+# Farm Summary
+st.markdown("### 🏡 Farm Summary")
+st.info(f"""
+**Farm:** {farm_name}  
+**Crop:** {crop_name} • **Size:** {field_size} acres  
+**Pump:** {pump_type} • {pump_power_kw} kW • {flow_rate} L/min  
+**Irrigation Status:** {status} ({ratio:.1f}% of adjusted target)  
+**Notes:** {notes if notes else "None"}
+""")
 
-st.info(
-    f"**{crop_name} Recommendation**\n\n"
-    f"Ideal temperature: {rec['ideal_temp']}\n\n"
-    f"Water need: {rec['water_need']}\n\n"
-    f"Tip: {rec['tip']}"
-)
+# Temperature
+st.markdown("### 🌡️ Temperature Overview")
+t1, t2, t3 = st.columns(3)
+t1.metric("Average", f"{avg_temp:.1f} °C")
+t2.metric("Highest", f"{max_temp:.1f} °C")
+t3.metric("Lowest", f"{min_temp:.1f} °C")
 
-# ====================== CHARTS ======================
-st.subheader("📈 Farm Charts")
+st.write(f"**Hottest:** {hottest['time']} ({hottest['temperature']:.1f}°C)  •  **Coolest:** {coolest['time']} ({coolest['temperature']:.1f}°C)")
 
-col1, col2 = st.columns(2)
+# Alerts
+HIGH, LOW = 32, 15
+alerts = []
+for r in temperature_records:
+    if r["temperature"] >= HIGH:
+        alerts.append(f"⚠️ High temperature at {r['time']}: **{r['temperature']:.1f}°C**")
+    elif r["temperature"] <= LOW:
+        alerts.append(f"⚠️ Low temperature at {r['time']}: **{r['temperature']:.1f}°C**")
 
-# Shared layout for consistent charts
-chart_font = {
-    "family": "Arial, sans-serif",
-    "size": 14,
-    "color": text_color
-}
+if alerts:
+    st.warning("Temperature Alerts")
+    for a in alerts:
+        st.markdown(a)
+else:
+    st.success("✓ No temperature alerts — all readings normal")
 
-with col1:
-    df_temp = pd.DataFrame(temperature_records)
+# Charts
+st.markdown("### 📈 Charts")
+col_chart1, col_chart2 = st.columns(2)
 
-    fig = px.line(
-        df_temp,
-        x="time",
-        y="temperature",
-        markers=True,
-        title="Temperature Through the Day",
-        template=plot_template
-    )
+with col_chart1:
+    if temperature_records:
+        temp_df = pd.DataFrame(temperature_records)
+        st.bar_chart(temp_df.set_index("time")["temperature"], use_container_width=True)
+        st.caption("Temperature during the day")
 
-    fig.update_traces(
-        line=dict(width=3),
-        marker=dict(size=9),
-        hovertemplate=(
-            "Time: %{x}<br>"
-            "Temperature: %{y:.1f}°C"
-            "<extra></extra>"
-        )
-    )
-
-    fig.update_layout(
-        height=380,
-        autosize=True,
-        font=chart_font,
-        title=dict(font=dict(size=18, color=text_color)),
-        paper_bgcolor=panel_bg,
-        plot_bgcolor=panel_bg,
-        margin=dict(l=20, r=20, t=65, b=30),
-        xaxis=dict(
-            title="Time",
-            color=text_color,
-            showgrid=False
-        ),
-        yaxis=dict(
-            title="Temperature (°C)",
-            color=text_color,
-            gridcolor="rgba(128,128,128,0.25)",
-            rangemode="normal"
-        ),
-        showlegend=False
-    )
-
-    st.plotly_chart(
-        fig,
-        use_container_width=True,
-        key=f"{prefix}_temperature_chart"
-    )
-
-with col2:
-    comparison = pd.DataFrame({
-        "Measure": ["Water Used", "Required Water"],
-        "Litres": [total_water, required_water]
+with col_chart2:
+    chart_data = pd.DataFrame({
+        "Metric": ["Water (1000 L)", "Energy (kWh)"],
+        "Value": [total_water/1000, total_energy]
     })
+    st.bar_chart(chart_data.set_index("Metric"), use_container_width=True)
+    st.caption("Water vs Energy")
 
-    fig2 = px.bar(
-        comparison,
-        x="Measure",
-        y="Litres",
-        text="Litres",
-        title="Water Used vs Required",
-        template=plot_template
-    )
+# Cost Projections
+st.markdown("### 📅 Cost Projections")
+p1, p2, p3 = st.columns(3)
+p1.metric("Today", f"${daily_cost:.2f}")
+p2.metric("This Week (est.)", f"${weekly_cost:.2f}")
+p3.metric("This Month (est.)", f"${monthly_cost:.2f}")
 
-    fig2.update_traces(
-        texttemplate="%{text:,.0f} L",
-        textposition="outside",
-        cliponaxis=False,
-        hovertemplate=(
-            "%{x}<br>"
-            "%{y:,.0f} litres"
-            "<extra></extra>"
-        )
-    )
-
-    fig2.update_layout(
-        height=380,
-        autosize=True,
-        font=chart_font,
-        title=dict(font=dict(size=18, color=text_color)),
-        paper_bgcolor=panel_bg,
-        plot_bgcolor=panel_bg,
-        margin=dict(l=20, r=20, t=65, b=40),
-        xaxis=dict(
-            title="",
-            color=text_color
-        ),
-        yaxis=dict(
-            title="Water (litres)",
-            color=text_color,
-            rangemode="tozero",
-            gridcolor="rgba(128,128,128,0.25)"
-        ),
-        showlegend=False
-    )
-
-    # Ensure room for labels above bars
-    largest_value = max(total_water, required_water, 1)
-    fig2.update_yaxes(range=[0, largest_value * 1.20])
-
-    st.plotly_chart(
-        fig2,
-        use_container_width=True,
-        key=f"{prefix}_water_chart"
-    )
-
-st.caption(
-    f"Average temperature: {avg_temp:.1f}°C · "
-    f"Status: {status} · "
-    f"Solar energy: {solar_energy:.2f} kWh · "
-    f"Electrical energy: {electrical_energy:.2f} kWh"
-)
-
-# ====================== SAVE CALCULATION ======================
-st.subheader("📜 Calculation History")
-
-if st.button(
-    "💾 Save This Calculation",
-    type="primary",
-    key=f"{prefix}_save"
-):
-    record = {
-        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M"),
-        "farm": farm_name,
-        "crop": crop_name,
-        "water_L": round(total_water, 1),
-        "energy_kWh": round(total_energy, 2),
-        "cost": round(total_cost, 2),
-        "efficiency": efficiency,
-        "status": status,
-        "runtime_h": round(total_runtime, 2),
-        "notes": notes
-    }
-
-    farm["history"].insert(0, record)
-    st.success(f"Saved calculation for {farm_name}!")
-
-history = farm["history"]
-
-if history:
-    hist_df = pd.DataFrame(history)
-    st.dataframe(
-        hist_df,
-        use_container_width=True,
-        hide_index=True
-    )
+# Pump details
+st.markdown("### 🔧 Pump Run Details")
+if pump_records:
+    table_data = []
+    for r in pump_records:
+        table_data.append({
+            "Run": r["run"],
+            "Start": r["start"],
+            "End": r["end"],
+            "Hours": round(r["runtime"], 2),
+            "Water (L)": round(r["runtime"] * water_per_hour, 1),
+            "Energy (kWh)": round(r["runtime"] * pump_power_kw, 2)
+        })
+    st.dataframe(table_data, use_container_width=True, hide_index=True)
 else:
-    st.info("No saved calculations for this farm yet.")
+    st.info("No pump runs recorded yet.")
 
-# ====================== PDF REPORT ======================
-st.subheader("📄 Export PDF Report")
+# Temperature log
+st.markdown("### 📅 Temperature Log")
+temp_data = []
+for r in temperature_records:
+    status_t = "HIGH" if r["temperature"] >= HIGH else ("LOW" if r["temperature"] <= LOW else "Normal")
+    temp_data.append({"Time": r["time"], "Temperature (°C)": r["temperature"], "Status": status_t})
+st.dataframe(temp_data, use_container_width=True, hide_index=True)
 
-if st.button(
-    "Generate PDF Report",
-    key=f"{prefix}_pdf"
-):
-    pdf = FPDF()
-    pdf.add_page()
+# What-If
+st.markdown("### 🔮 What-If Simulator")
+reduction = st.slider("Reduce runtime by (%)", 0, 100, 20)
+factor = 1 - (reduction / 100)
 
-    pdf.set_font("Arial", size=14)
+s1, s2, s3 = st.columns(3)
+s1.metric("Water Saved", f"{total_water * (1-factor):,.0f} L")
+s2.metric("Energy Saved", f"{total_energy * (1-factor):.2f} kWh")
+s3.metric("Money Saved", f"${total_cost * (1-factor):.2f}")
 
-    safe_name = farm_name.encode(
-        "latin-1", "replace"
-    ).decode("latin-1")
+# Downloads
+st.markdown("### 📥 Download Reports")
+col_a, col_b = st.columns(2)
 
-    pdf.cell(
-        0, 10,
-        f"Smart Farm Report - {safe_name}",
-        ln=True
-    )
+with col_a:
+    buffer = io.StringIO()
+    writer = csv.writer(buffer)
+    writer.writerow(["Timestamp", "Farm", "Crop", "Field Size", "Pump Type", "Power (kW)",
+                     "Runtime (h)", "Water (L)", "Energy (kWh)", "Electrical (kWh)",
+                     "Solar (kWh)", "Electricity Cost", "Fertilizer Cost", "Total Cost",
+                     "Water/Acre", "Cost/Litre", "Efficiency", "Rainfall (mm)",
+                     "Avg Temp", "Max Temp", "Min Temp", "Status", "Notes"])
+    writer.writerow([
+        datetime.now().strftime("%Y-%m-%d %H:%M"), farm_name, crop_name, field_size,
+        pump_type, pump_power_kw, round(total_runtime,2), round(total_water,1),
+        round(total_energy,2), round(electrical_energy,2), round(solar_energy,2),
+        round(electricity_cost,2), round(fertilizer_cost,2), round(total_cost,2),
+        round(water_per_acre,1), round(cost_per_litre,4), efficiency, rainfall,
+        round(avg_temp,1), round(max_temp,1), round(min_temp,1), status, notes
+    ])
+    st.download_button("📄 Download Full Report", buffer.getvalue(),
+                       file_name="farm_full_report.csv", mime="text/csv", use_container_width=True)
 
-    pdf.set_font("Arial", size=11)
-
-    rows = [
-        f"Date: {datetime.now().strftime('%Y-%m-%d %H:%M')}",
-        f"User: {st.session_state.username}",
-        f"Crop: {crop_name}",
-        f"Field size: {field_size:.1f} acres",
-        f"Water used: {total_water:,.0f} L",
-        f"Required water: {required_water:,.0f} L",
-        f"Energy: {total_energy:.2f} kWh",
-        f"Total cost: ${total_cost:.2f}",
-        f"Efficiency: {efficiency}",
-        f"Status: {status}",
-        f"Runtime: {total_runtime:.2f} h",
-        f"Rainfall: {rainfall:g} mm"
-    ]
-
-    for row in rows:
-        safe_row = row.encode(
-            "latin-1", "replace"
-        ).decode("latin-1")
-
-        pdf.cell(0, 8, safe_row, ln=True)
-
-    if notes:
-        safe_notes = notes.encode(
-            "latin-1", "replace"
-        ).decode("latin-1")
-
-        pdf.multi_cell(
-            0, 8,
-            f"Notes: {safe_notes}"
-        )
-
-    pdf_result = pdf.output(dest="S")
-
-    pdf_data = (
-        pdf_result.encode("latin-1")
-        if isinstance(pdf_result, str)
-        else bytes(pdf_result)
-    )
-
-    file_slug = re.sub(
-        r"[^A-Za-z0-9_-]+",
-        "_",
-        farm_name
-    ).strip("_") or "farm"
-
-    st.download_button(
-        "⬇️ Download PDF",
-        data=pdf_data,
-        file_name=f"farm_report_{file_slug}.pdf",
-        mime="application/pdf",
-        key=f"{prefix}_download_pdf"
-    )
+with col_b:
+    buffer2 = io.StringIO()
+    writer2 = csv.writer(buffer2)
+    writer2.writerow(["Date", "Farm", "Time", "Temperature (°C)"])
+    for r in temperature_records:
+        writer2.writerow([datetime.now().strftime("%Y-%m-%d"), farm_name, r["time"], r["temperature"]])
+    st.download_button("🌡️ Download Temperature Log", buffer2.getvalue(),
+                       file_name="temperature_log.csv", mime="text/csv", use_container_width=True)
 
 st.markdown("---")
-
-st.caption(
-    "Smart Farm Calculator • Multi-farm • "
-    "Independent History • PDF Reports • Crop Tips"
-)
+st.caption("Smart Farm Calculator • Built for farmers • Ready for future sensor integration")
